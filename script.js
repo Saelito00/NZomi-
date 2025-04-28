@@ -66,3 +66,52 @@ document.addEventListener('DOMContentLoaded', () => {
         cadastrarImovel();
     }
 });
+// Função para mostrar o mapa
+async function mostrarMapa() {
+    // Inicializar o mapa
+    const plataforma = new H.service.Platform({
+        apikey: 'cFfYkiac-CgWvfYv0JEAeMoYJpe9ZImiEDiHBrGeIi4' // Tua API do Here
+    });
+
+    const tiposMapa = plataforma.createDefaultLayers();
+    const mapa = new H.Map(
+        document.getElementById('mapa'),
+        tiposMapa.vector.normal.map,
+        {
+            zoom: 12,
+            center: { lat: -8.839988, lng: 13.289437 } // Centro inicial (Luanda, Angola)
+        }
+    );
+
+    // Ativar comportamento e UI
+    const comportamento = new H.mapevents.Behavior(new H.mapevents.MapEvents(mapa));
+    const ui = H.ui.UI.createDefault(mapa, tiposMapa);
+
+    // Buscar imóveis cadastrados no Supabase
+    const { data: imoveis, error } = await supabase
+        .from('imoveis')
+        .select('*');
+
+    if (error) {
+        console.error('Erro ao buscar imóveis:', error.message);
+        return;
+    }
+
+    // Colocar marcadores no mapa
+    imoveis.forEach(imovel => {
+        const marcador = new H.map.Marker({ lat: imovel.latitude, lng: imovel.longitude });
+        marcador.setData(`<b>${imovel.nome}</b><br>${imovel.descricao}`);
+        marcador.addEventListener('tap', (evt) => {
+            const bubble = new H.ui.InfoBubble(evt.target.getGeometry(), {
+                content: evt.target.getData()
+            });
+            ui.addBubble(bubble);
+        });
+        mapa.addObject(marcador);
+    });
+}
+
+// Mostrar o mapa depois que o site carregar
+document.addEventListener('DOMContentLoaded', () => {
+    mostrarMapa();
+});
